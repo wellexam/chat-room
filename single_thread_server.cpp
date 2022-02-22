@@ -77,11 +77,9 @@ int main(int argc, char *argv[]) {
 
     int flag = 1;
     setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
-    // flag = 5;
-    // setsockopt(listenfd, SOL_SOCKET, SO_SNDBUF, &flag, sizeof(flag));
-    // socklen_t len = sizeof(flag);
-    // getsockopt(listenfd, SOL_SOCKET, SO_SNDBUF, &flag, &len);
-    // std::cout << flag << std::endl;
+    socklen_t len = sizeof(flag);
+    getsockopt(listenfd, SOL_SOCKET, SO_SNDBUF, &flag, &len);
+    std::cout << "TCP send buffer size is " << flag << "bytes" << std::endl;
     ret = bind(listenfd, (struct sockaddr *)&address, sizeof(address));
     assert(ret >= 0);
     ret = listen(listenfd, 5);
