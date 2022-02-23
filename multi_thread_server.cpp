@@ -1,23 +1,4 @@
 #include "threadpool.hpp"
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <cstdio>
-#include <cerrno>
-#include <fcntl.h>
-#include <cstdlib>
-#include <cassert>
-#include <sys/epoll.h>
-#include <csignal>
-#include <unistd.h>
-#include <iostream>
-#include <cstring>
-#include <vector>
-#include <unordered_map>
-#include <list>
-#include <memory>
-#include <deque>
-#include <poll.h>
 
 #include "connection.hpp"
 #include "broadcast.hpp"
@@ -53,18 +34,20 @@ int main(int argc, char *argv[]) {
     ret = listen(listenfd, 5);
     assert(ret >= 0);
 
-    pollfd fds[2];
+    // setnonblocking(listenfd);
+
+    pollfd fds[1];
 
     fds[0].fd = listenfd;
     fds[0].events = POLLIN | POLLOUT | POLL_ERR;
 
-    threadpool<client_connection> thread_pool;
+    auto Msg_map = std::make_shared<client_map>();
 
-    auto Msg_map = std::make_shared<msg_map>();
-
-    auto pub_que = std::make_shared<public_msg_que>();
+    auto pub_que = std::make_shared<msg_quene>();
 
     bool stop = false;
+
+    threadpool<client_connection> thread_pool;
 
     try {
         // 广播线程
@@ -73,7 +56,7 @@ int main(int argc, char *argv[]) {
 
     //事件循环
     while (!stop) {
-        ret = poll(fds, 1, 0);
+        ret = poll(fds, 1, -1);
         if (ret < 1) {
             fprintf(stderr, "poll failure\n");
             break;
@@ -81,11 +64,14 @@ int main(int argc, char *argv[]) {
         for (int i = 0; i < 1; i++) {
             if ((fds[i].fd == listenfd) && (fds[i].revents & POLLIN)) {
                 // auto temp = std::make_shared<client_connection>(fds[i].fd, Msg_map);
-                thread_pool.append(std::make_shared<client_connection>(fds[i].fd, Msg_map));
+                thread_pool.append(std::make_shared<client_connection>(fds[i].fd, Msg_map, pub_que));
+            } else {
+                stop = true;
+                fprintf(stderr, "connection error\n");
             }
         }
     }
-    
+
     stop = true;
     close(listenfd);
     return 0;

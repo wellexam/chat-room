@@ -72,12 +72,12 @@ threadpool<T>::~threadpool() {
 }
 
 template <typename T>
-bool threadpool<T>::append(std::shared_ptr<T> request) {
+bool threadpool<T>::append(std::shared_ptr<T> task) {
     std::lock_guard<std::mutex> lk(que.task_mutex);
     if (que.tasks.size() > max_requests) {
         return false;
     }
-    que.tasks.push_back(request);
+    que.tasks.push_back(task);
     que.cond.notify_one();
     return true;
 }
@@ -87,7 +87,7 @@ void threadpool<T>::run() {
     while (!m_stop) {
         std::unique_lock<std::mutex> lk(que.task_mutex);
         que.cond.wait(lk, [this] { return !this->que.tasks.empty(); });
-        T *task = que.tasks.front();
+        std::shared_ptr<T> task = que.tasks.front();
         que.tasks.pop_front();
         lk.unlock();
         task->process();
